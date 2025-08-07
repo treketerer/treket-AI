@@ -19,37 +19,44 @@ def learn_cycle(ai_object, data_man, config):
         default_iter = config['default_iter']
     config['default_iter'] = default_iter + config['iterations']
 
-    for i in tqdm(range(config['iterations'])):#tqdm():
-        if i == round(config['iterations'] / 2) or i == round(config['iterations'] / 1.2):
-            ai_object.learning_speed /= 10
-            print("\nСкорость обучение уменьшена в 10 раз. Сейчас скорость равна", ai_object.learning_speed)
+    now_iter = 0
+    try:
+        for i in tqdm(range(config['iterations'])):#tqdm():
+            if i == round(config['iterations'] / 2) or i == round(config['iterations'] / 1.2):
+                ai_object.learning_speed /= 10
+                print("\nСкорость обучение уменьшена в 10 раз. Сейчас скорость равна", ai_object.learning_speed)
 
-        ai_object.set_random_learn_couple()
-        f = ai_object.forward()
+            ai_object.set_random_learn_couple()
+            f = ai_object.forward()
 
-        if i % config['stats_input_steps'] == 0:
-            target_indices = [data_man.get_word_index(item[1]) for item in ai_object.learn_input_words]
-            loss = np.mean(utils.sparse_cross_entropy_batch(f.get('answer'), target_indices)).item(),
-            targets = np.argmax(ai_object.target_output, axis=1)
-            answers = np.argmax(f.get('answer'), axis=1)
-            accuracy = np.mean(answers == targets) * 100
+            if i % config['stats_input_steps'] == 0:
+                target_indices = [data_man.get_word_index(item[1]) for item in ai_object.learn_input_words]
+                loss = np.mean(utils.sparse_cross_entropy_batch(f.get('answer'), target_indices)).item(),
+                targets = np.argmax(ai_object.target_output, axis=1)
+                answers = np.argmax(f.get('answer'), axis=1)
+                accuracy = np.mean(answers == targets) * 100
 
-            config['loss_arr'].append(loss[0])
-            config['accuracy_arr'].append(accuracy)
+                config['loss_arr'].append(loss[0])
+                config['accuracy_arr'].append(accuracy)
 
-            print(f'\n{i + default_iter} Loss: {loss[0]} Точность: {accuracy}%')
+                now_iter = i + default_iter
+                print(f'\n{now_iter} Loss: {loss[0]} Точность: {accuracy}%')
 
 
-        ai_object.backward( f.get('answer'), ai_object.target_output, f.get('h_arr'), f.get('t_arr'))
+            ai_object.backward( f.get('answer'), ai_object.target_output, f.get('h_arr'), f.get('t_arr'))
+    except KeyboardInterrupt:
+        print('Обучение прервано. Сохранение модели...')
+    finally:
+        config['w_arr'] = ai_object.w_arr
+        config['b_arr'] = ai_object.b_arr
+        config['alphabet_emb'] = ai_object.alphabet_emb
+        config['alphabet_indexes'] = data_man.alphabet_indexes
 
-    config['w_arr'] = ai_object.w_arr
-    config['b_arr'] = ai_object.b_arr
-    config['alphabet_emb'] = ai_object.alphabet_emb
-    config['alphabet_indexes'] = data_man.alphabet_indexes
 
-    with open(config['ai_model_file_name'], 'wb') as f:
-        pickle.dump(config, f)
-    print("")
+        config['default_iter'] = now_iter
+
+        with open(config['ai_model_file_name'], 'wb') as f:
+            pickle.dump(config, f)
 
 def use_cycle(ai_object, data_man, config):
     for i in range(1000):
@@ -93,7 +100,7 @@ if __name__ == "__main__":
         'parse_data_by': '.',
 
         'learning_speed': 0.0005,
-        'iterations': 30000,
+        'iterations': 50000,
         'batch_size': 512,
         'temperature': 1.0,
         'MIN_FREQ': 5,

@@ -70,9 +70,7 @@ class DataManagerClass:
                     if now_couple:
                         self.learning_data.append([now_couple, target_word])
 
-        print("Число обучающих примеров -", len(self.learning_data), "Длина словаря -", len(self.alphabet_indexes), self.learning_data[:150])
-
-        print(self.learning_data[:20])
+        print("Число обучающих примеров -", len(self.learning_data), "Длина словаря -", len(self.alphabet_indexes), self.learning_data[:30])
 
 
     def get_one_hot_vector(self, vector_len, index):
