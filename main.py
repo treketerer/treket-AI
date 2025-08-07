@@ -17,23 +17,29 @@ def learn_cycle(ai_object, data_man, config):
     default_iter = 0
     if 'default_iter' in config:
         default_iter = config['default_iter']
-    config['total_iterations'] = default_iter + config['iterations']
+    config['default_iter'] = default_iter + config['iterations']
 
     for i in tqdm(range(config['iterations'])):#tqdm():
         if i == round(config['iterations'] / 2) or i == round(config['iterations'] / 1.2):
             ai_object.learning_speed /= 10
-            print("Скорость обучение уменьшена в 10 раз. Сейчас скорость равна", ai_object.learning_speed)
+            print("\nСкорость обучение уменьшена в 10 раз. Сейчас скорость равна", ai_object.learning_speed)
 
         ai_object.set_random_learn_couple()
         f = ai_object.forward()
 
-        if i % 300 == 0:
+        if i % config['stats_input_steps'] == 0:
             target_indices = [data_man.get_word_index(item[1]) for item in ai_object.learn_input_words]
             loss = np.mean(utils.sparse_cross_entropy_batch(f.get('answer'), target_indices)).item(),
             targets = np.argmax(ai_object.target_output, axis=1)
             answers = np.argmax(f.get('answer'), axis=1)
+            accuracy = np.mean(answers == targets) * 100
 
-            print(f'\n{i + default_iter} Loss: {loss[0]} Точность: {np.mean(answers == targets) * 100}%')
+            config['loss_arr'].append(loss[0])
+            config['accuracy_arr'].append(accuracy)
+
+            print(f'\n{i + default_iter} Loss: {loss[0]} Точность: {accuracy}%')
+
+
         ai_object.backward( f.get('answer'), ai_object.target_output, f.get('h_arr'), f.get('t_arr'))
 
     config['w_arr'] = ai_object.w_arr
@@ -79,29 +85,33 @@ def use_cycle(ai_object, data_man, config):
 
 if __name__ == "__main__":
     learning = True
-    further_education = False
+    further_education = True
     config = {
-        'ai_model_file_name': "models/pushk.pkl",
-        'further_education_coef': '2',
+        'ai_model_file_name': "models/pushkin_130k_3x512.pkl",
+        'further_education_coef': 'punctuation',
         'data_path': "./data/pushk.txt",  # "C:/Users/Андрей/Desktop/андрей/Чаты/ANYA_BOT.txt",
         'parse_data_by': '.',
 
         'learning_speed': 0.0005,
-        'iterations': 250000,
+        'iterations': 30000,
         'batch_size': 512,
-        'temperature': 0.8,
+        'temperature': 1.0,
         'MIN_FREQ': 5,
 
         'embedding_len': 256,
         'emb_input_len': 10,
         'hide_layers_count': 3,
         'hide_layer_height': 512,
+
+        'loss_arr': [],
+        'accuracy_arr': [],
+        'stats_input_steps': 150
     }
-    #
+
     # config = {
-    #     'ai_model_file_name': "models/asya.pkl",
+    #     'ai_model_file_name': "models/robin.pkl",
     #     'further_education_coef': '2',
-    #     'data_path': "./data/asya.txt", # "C:/Users/Андрей/Desktop/андрей/Чаты/ANYA_BOT.txt",
+    #     'data_path': "./data/robin.txt", # "C:/Users/Андрей/Desktop/андрей/Чаты/ANYA_BOT.txt",
     #     'parse_data_by': '.',
     #
     #     'learning_speed': 0.001,
@@ -143,14 +153,14 @@ if __name__ == "__main__":
 
             iters = config['iterations']
             config.update(now_config)
-            config['default_iter'] = iters
+            # config['default_iter'] = iters
             print(config['learning_speed'])
 
             config['ai_model_file_name'] = ai_model_file_name
 
             old_size = len(config['alphabet_indexes'])
 
-            if config['parse_type'] == '.':
+            if config['parse_data_by'] == '.':
                 raw_text = utils.parse_file_data_by_dots(config['data_path'])
             else:
                 raw_text = utils.parse_file_data_by_lines(config['data_path'])
@@ -159,6 +169,7 @@ if __name__ == "__main__":
                 if word not in config['alphabet_indexes']:
                     config['alphabet_emb'][word] = np.random.randn(1, config['embedding_len'])
                     config['alphabet_indexes'].append(word)
+                    print("В словарь добавлено слово", word)
             print(len(config['alphabet_indexes']))
             new_size = len(config['alphabet_indexes'])
 

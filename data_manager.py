@@ -40,7 +40,7 @@ class DataManagerClass:
     def parse_couples_in_text(self, text_couples:list):
         answer_couples = []
         for couple in text_couples:
-            answer_couples.append(utils.clean_text(couple))
+            answer_couples.append(couple)
         return answer_couples
 
     def init_learning_data(self, raw_learn_data):
@@ -66,6 +66,7 @@ class DataManagerClass:
 
                 for j in range(len(full_context)):
                     now_couple = full_context[j:]
+                    if random.randint(0 + (j - 1) * round(50 / self.emb_input_len), 100) < 50: continue
                     if now_couple:
                         self.learning_data.append([now_couple, target_word])
 

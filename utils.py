@@ -2,6 +2,7 @@ import numpy as np
 from collections import Counter
 import re
 import string
+from razdel import sentenize
 
 def sparse_cross_entropy(z, y):
     return -np.log(z[0, y])
@@ -41,12 +42,13 @@ def clean_text(text: str) -> str:
     text = re.sub(r'[0-9]', '', text)
 
     # Шаг 5: Удаляем специфические символы и расширенную пунктуацию, включая дефисы
-    text = re.sub(r'[«»„“"”"‘’`‛—–-]', ' ', text)  # Заменяем на пробел, чтобы не склеивать слова
+    text = re.sub(r'[«»<>„*“"”"‘’`‛…——–-]', ' ', text)  # Заменяем на пробел, чтобы не склеивать слова
 
+    text = re.sub(r'([.,!?])', r' \1 ', text)
     # Шаг 6: Удаляем стандартную пунктуацию
     # Создаем таблицу для перевода, исключая дефис, т.к. уже обработали его
     # Это также удалит символы вроде `_`, `+`, `=`, и т.д.
-    punct_to_remove = string.punctuation.replace('-', '')
+    punct_to_remove = string.punctuation.replace('.', '').replace(',', '').replace('!', '').replace('?', '')
     table = str.maketrans('', '', punct_to_remove)
     text = text.translate(table)
 
@@ -95,11 +97,13 @@ def parse_file_data_by_dots(data_path):
     raw_data = []
     with open(data_path, "r", encoding="utf-8") as file:
         text = file.read()  # Читаем весь текст сразу
-        sentences = re.split(r'[-.?!–\n:;]', text)
+        # sentences = re.split(r'[-.?!–\n:;]', text)
+        cleaned_text = text.replace('\t', '').replace("\n\n", ". ").replace("\n", " ").replace("..", ".").replace(". .", ".")
+        couples = list(sentenize(cleaned_text))
 
-        # print(sentences)
-        for couple in sentences:
+        # print(couples[:20])
+        for couple in couples:
             # print(couple)
-            if len(couple.split()) < 2: continue
-            raw_data.append(couple.strip().lower().replace("\n", ""))
+            if len(couple.text.split()) < 2: continue
+            raw_data.append(clean_text(couple.text).strip().lower().replace("\n", ""))
     return raw_data
